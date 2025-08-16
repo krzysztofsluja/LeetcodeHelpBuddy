@@ -12,9 +12,13 @@ from __future__ import annotations
 
 import json
 from typing import Any, Dict, Generator, Optional, Tuple
+from enum import Enum
 
 import gradio as gr
 
+class Operation(Enum):
+    GENERATE_TESTS = "GENERATE TESTS CASES"
+    EXPLAIN_PROBLEM = "EXPLAIN PROBLEM"
 
 def create_gradio_interface() -> gr.Blocks:
     """Create the main Gradio interface using Blocks layout."""
@@ -46,6 +50,8 @@ def create_gradio_interface() -> gr.Blocks:
         color: #856404;
     }
     """
+
+    DEFAULT_OPERATION = Operation.GENERATE_TESTS
     
     with gr.Blocks(
         title="LeetCode Help Buddy",
@@ -82,7 +88,7 @@ For explanations, just paste the problem statement and click 'Explain'.""",
                 
                 # Button row
                 with gr.Row(elem_classes=["button-row"]):
-                    generate_btn = gr.Button(
+                    """generate_btn = gr.Button(
                         "🎯 Generate Tests",
                         variant="primary",
                         size="lg",
@@ -93,12 +99,24 @@ For explanations, just paste the problem statement and click 'Explain'.""",
                         variant="secondary",
                         size="lg",
                         scale=1,
+                    )"""
+                    options_dropdown = gr.Dropdown(
+                        label="Select an operation",
+                        choices=[Operation.GENERATE_TESTS.value, Operation.EXPLAIN_PROBLEM.value],
+                        value=DEFAULT_OPERATION.value,
+                        interactive=True,
                     )
-                    clear_btn = gr.Button(
-                        "🗑️ Clear",
-                        size="lg",
-                        scale=0,
-                    )
+                    with gr.Column():
+                        clear_btn = gr.Button(
+                            "🗑️ Clear",
+                            size="lg",
+                            scale=0,
+                        )
+                        send_btn = gr.Button(
+                            "🔍 Send",
+                            size="lg",
+                            scale=0,
+                        )
                 
                 # Clarifier message area (initially hidden)
                 clarifier_msg = gr.Markdown(
@@ -110,28 +128,16 @@ For explanations, just paste the problem statement and click 'Explain'.""",
                 with gr.Column(elem_classes=["results-container"]):
                     gr.Markdown("### Results")
                     
-                    # Tabs for different result types
-                    with gr.Tabs():
-                        with gr.Tab("Test Cases"):
-                            test_results = gr.JSON(
-                                label="Generated Test Cases",
-                                visible=False,
-                            )
-                            test_summary = gr.Markdown(
-                                "Generated test cases will appear here...",
-                            )
-                            download_json = gr.DownloadButton(
-                                "📥 Download JSON",
-                                visible=False,
-                            )
-                        
-                        with gr.Tab("Explanation"):
-                            explanation_output = gr.Markdown(
-                                "Problem explanation will appear here...",
-                            )
+                    with gr.Row():
+                        test_results = gr.Textbox(
+                            label="LeetBuddy's Response",
+                            lines=10,
+                            max_lines=20,
+                            interactive=False
+                        )
         
         # Event handlers
-        def handle_generate_tests(statement: str) -> Tuple[Any, str, str]:
+        def handle_generate_tests(problem_input: str, statement: str) -> Tuple[Any, str, str]:
             """Handle test generation request."""
             if not statement.strip():
                 return (
@@ -188,7 +194,7 @@ For explanations, just paste the problem statement and click 'Explain'.""",
             """
             
             return (
-                sample_tests,
+                problem_input,
                 summary,
                 "",  # Clear clarifier message on success
             )
@@ -227,41 +233,39 @@ For explanations, just paste the problem statement and click 'Explain'.""",
             - Multiple valid solutions
             """
         
-        def handle_clear() -> Tuple[str, Any, str, str, str]:
+        def handle_clear() -> Tuple[str, Any, str]:
             """Clear all inputs and outputs."""
             return (
                 "",  # problem_input
                 None,  # test_results
-                "Generated test cases will appear here...",  # test_summary
                 "",  # clarifier_msg
-                "Problem explanation will appear here...",  # explanation_output
             )
         
-        # Wire up event handlers
-        generate_btn.click(
-            fn=handle_generate_tests,
-            inputs=[problem_input],
-            outputs=[
-                test_results,
-                test_summary,
-                clarifier_msg,
-            ],
-        )
+        def handle_send(problem_input: str, operation: str) -> Tuple[str, Any, str]:
+            """Send the problem statement to the server."""
+            match operation:
+                case Operation.GENERATE_TESTS.value:
+                    return handle_generate_tests(problem_input, operation)
+                case _:
+                    return (problem_input, "There's nothing to show here :(", "")
         
-        explain_btn.click(
-            fn=handle_explain_problem,
-            inputs=[problem_input],
-            outputs=[explanation_output],
-        )
         
         clear_btn.click(
             fn=handle_clear,
             outputs=[
                 problem_input,
                 test_results,
-                test_summary,
                 clarifier_msg,
-                explanation_output,
+            ],
+        )
+
+        send_btn.click(
+            fn=handle_send,
+            inputs=[problem_input, options_dropdown],
+            outputs=[
+                problem_input,
+                test_results,
+                clarifier_msg,
             ],
         )
     
