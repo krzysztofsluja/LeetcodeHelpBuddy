@@ -7,11 +7,11 @@ with proper configuration and future-proofing for multiple providers.
 
 from __future__ import annotations
 
-from typing import Any, Protocol, Type, TypeVar
+from typing import Any, Protocol, Type, TypeVar, overload
 
 from pydantic import BaseModel
 
-from ..base import SimpleLLMAdapter, SupportedLLMProvider
+from ..base import SimpleLLMAdapter, StructuredLLMAdapter, SupportedLLMProvider
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -28,6 +28,25 @@ _registry: dict[SupportedLLMProvider, ProviderFactory] = {}
 
 def register_factory(p: SupportedLLMProvider, f: ProviderFactory) -> None:
     _registry[p] = f
+
+@overload
+def create_adapter(
+    provider: SupportedLLMProvider,
+    *,
+    model_name: str,
+    response_format: type[T],
+    **kw: Any
+) -> StructuredLLMAdapter[T]: ...
+
+@overload
+def create_adapter(
+    provider: SupportedLLMProvider,
+    *,
+    model_name: str,
+    response_format: None = None,
+    **kw: Any
+) -> SimpleLLMAdapter[T]: ...
+    
 
 def create_adapter(
     provider: SupportedLLMProvider,
