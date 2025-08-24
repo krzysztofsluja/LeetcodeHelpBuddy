@@ -37,7 +37,7 @@ class LLMRequest:
     temperature: float = 0.1
     timeout_seconds: float = 30.0
     
-class SimpleLLMAdapter(ABC):
+class SimpleLLMAdapter(ABC, Generic[T]):
 
     def __init__(self, provider: SupportedLLMProvider):
         self.provider = provider
@@ -68,12 +68,11 @@ class SimpleLLMAdapter(ABC):
     def _log_response(self, response: LLMResponse[T]) -> None:
         self.logger.info(
             f"LLM response - provider: {self.provider.value}, "
-            f"model: {response.model}, latency: {response.latency_ms}ms, "
-            f"usage: {response.usage}"
+            f"model: {response.model_name}"
         )
 
 
-class StructuredLLMAdapter(SimpleLLMAdapter, Generic[T]):
+class StructuredLLMAdapter(SimpleLLMAdapter[T]):
     """
     Abstract base class for all LLM adapters.
     

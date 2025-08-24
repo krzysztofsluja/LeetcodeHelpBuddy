@@ -8,21 +8,13 @@ future integration with LangChain/LangGraph while maintaining clean abstractions
 
 from __future__ import annotations
 
-from .base import BaseLLMAdapter, LLMResponse
-from .models import ExplanationRequest, ExplanationResponse, GenerationRequest
+from .base import LLMResponse
 from .openai_adapter import OpenAIAdapter
-from .factory.factory import LLMAdapterFactory, create_adapter
-from .service import LLMService, get_llm_service
+from .factory import ProviderFactory, create_adapter
 
 __all__ = [
-    "BaseLLMAdapter",
-    "LLMResponse"
-    "ExplanationRequest",
-    "ExplanationResponse", 
-    "GenerationRequest",
+    "LLMResponse",
     "OpenAIAdapter",
-    "LLMAdapterFactory",
-    "create_adapter",
-    "LLMService",
-    "get_llm_service",
+    "ProviderFactory",
+    "create_adapter"
 ]

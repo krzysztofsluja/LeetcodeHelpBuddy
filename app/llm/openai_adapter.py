@@ -14,12 +14,12 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
+from app.llm.exception.llm_exception import LLMError
+
 from .base import (
     StructuredLLMAdapter,
-    LLMError,
-    LLMProvider,
+    SupportedLLMProvider,
     LLMResponse,
-    LLMValidationError,
     LLMRequest
 )
 
@@ -41,7 +41,7 @@ class OpenAIAdapter(StructuredLLMAdapter[T]):
     def __init__(self, model_name: str, response_format: Optional[Type[T]] = None):
         if not model_name:
             raise ValueError("Model name is required")
-        super().__init__(LLMProvider.OPENAI)
+        super().__init__(SupportedLLMProvider.OPENAI)
         load_dotenv()
         
         self.client = AsyncOpenAI(
@@ -53,17 +53,11 @@ class OpenAIAdapter(StructuredLLMAdapter[T]):
         self.response_format = response_format
 
     async def _call_llm_api(self, request: LLMRequest) -> Any:
-        if await self.validate_connection():
-            return self.client.responses.create(
-                model=self.model,
-                instructions=request.system_prompt,
-                input=request.user_prompt,
-                temperature=request.temperature,
-            )   
-        raise LLMError(
-            "Failed to validate OpenAI connection",
-            provider=LLMProvider.OPENAI
-        )
+        return self.client.responses.create(
+            model=self.model,
+            instructions=request.system_prompt,
+            input=request.user_prompt,
+            temperature=request.temperature)
     
     async def generate_simple_text_output(self, request: LLMRequest) -> str:
         response = await self._call_llm_api(request)
@@ -97,11 +91,11 @@ class OpenAIAdapter(StructuredLLMAdapter[T]):
             return llm_response
             
         except Exception as e:
-            if isinstance(e, (LLMError, LLMValidationError)):
+            if isinstance(e, (LLMError)):
                 raise
             raise LLMError(
                 f"Unexpected error in OpenAI structured generation: {e}",
-                provider=LLMProvider.OPENAI,
+                provider=SupportedLLMProvider.OPENAI,
                 original_error=e
             )
     
@@ -131,10 +125,10 @@ class OpenAIAdapter(StructuredLLMAdapter[T]):
         if response.refusal:
             raise LLMError(
                 f"OpenAI refused to generate a response: {response.refusal}",
-                provider=LLMProvider.OPENAI
+                provider=SupportedLLMProvider.OPENAI
             )
         return LLMResponse(
             content=response.parsed,
             model_name=self.model,
-            provider=LLMProvider.OPENAI
+            provider=SupportedLLMProvider.OPENAI
         )
