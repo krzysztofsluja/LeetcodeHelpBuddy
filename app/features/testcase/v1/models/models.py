@@ -6,29 +6,25 @@ from app.features.models import FeatureRequest, FeatureResponse
 
 
 class Difficulty(Enum):
-    EASY = "easy"
-    MEDIUM = "medium"
-    HARD = "hard"
+    EASY = "EASY"
+    MEDIUM = "MEDIUM"
+    HARD = "HARD"
 
-@dataclass(frozen=True)
 class TestCase(BaseModel):
     question_slug: str
     test_case: str
     expected_result: str
-    description: Optional[str] = None
     is_edge_case: bool = False
 
-@dataclass(frozen=True)
 class EdgeTestCase(TestCase):
     is_edge_case: Literal[True] = True
 
-@dataclass(frozen=True)
-class TestCaseGenerationRequest:
+class TestCaseGenerationRequest(BaseModel):
     user_message: str = Field(..., description="User message containing question slug, name, or description")
     difficulty: Difficulty = Field(..., description="Difficulty level for test case generation")
+    num_test_cases: int = Field(default=3, description="Number of test cases to generate")
 
-@dataclass(frozen=True)
-class TestCaseGenerationResponse:
+class TestCaseGenerationResponse(BaseModel):
     question_slug: str = Field(..., description="Identified or normalized question slug")
     test_cases: List[TestCase] = Field(..., description="Generated test cases")
     reasoning: str = Field(..., description="Explanation of test case generation approach")

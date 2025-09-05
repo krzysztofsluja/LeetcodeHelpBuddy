@@ -99,15 +99,6 @@ class OpenAIAdapter(StructuredLLMAdapter[T]):
                 original_error=e
             )
     
-    async def validate_connection(self) -> bool:
-        """Validate OpenAI connection by making a simple API call."""
-        try:
-            self.client.models.list()
-        except openai.AuthenticationError:
-            return False
-        else:
-            return True
-    
     async def _call_llm_api_with_structured_output(
         self,
         messages: list[Dict[str, str]],

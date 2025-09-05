@@ -11,6 +11,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from dotenv import load_dotenv
 import gradio as gr
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
     # Startup
     print("Starting LeetCode Help Buddy...")
+    load_dotenv()
     
     # Verify OpenAI API key is configured
     if not os.getenv("OPENAI_API_KEY"):
@@ -46,7 +48,7 @@ def create_app() -> FastAPI:
     # CORS middleware for development
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

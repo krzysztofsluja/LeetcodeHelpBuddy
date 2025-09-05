@@ -124,6 +124,7 @@ User input: "{request.user_message}"
 Difficulty level: {request.difficulty}
 
 Please identify the problem and generate appropriate test cases. Ensure each test case has:
+- question_slug: the slug of the problem
 - test_case: input data in proper format
 - expected_result: correct output for the input
 
