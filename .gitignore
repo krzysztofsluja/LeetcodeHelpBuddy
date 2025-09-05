@@ -1,3 +1,5 @@
 .cursor/*
 .cursorignore
 /leetcode_env
+**/__pycache__/**
+.env

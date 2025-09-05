@@ -10,18 +10,24 @@ This module creates the Gradio Blocks interface with:
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any, Dict, Generator, Optional, Tuple
-from enum import Enum
+from app.features.models import Feature
+from app.features.router.feature_router import dispatch
 
 import gradio as gr
 
-class Operation(Enum):
-    GENERATE_TESTS = "GENERATE TESTS CASES"
-    EXPLAIN_PROBLEM = "EXPLAIN PROBLEM"
+from app.features.testcase.v1.models.models import TestCaseGenerationRequest
+from app.ui.formatters.testcase.testcase_formatter import TestCaseFormatter
 
 def create_gradio_interface() -> gr.Blocks:
     """Create the main Gradio interface using Blocks layout."""
+    
+    # Feature display names mapping
+    FEATURE_DISPLAY_NAMES = {
+        Feature.TEST_CASE_GENERATION: "GENERATE TEST CASES"
+    }
     
     # Custom CSS for better styling
     custom_css = """
@@ -51,7 +57,7 @@ def create_gradio_interface() -> gr.Blocks:
     }
     """
 
-    DEFAULT_OPERATION = Operation.GENERATE_TESTS
+    DEFAULT_OPERATION = Feature.TEST_CASE_GENERATION
     
     with gr.Blocks(
         title="LeetCode Help Buddy",
@@ -102,8 +108,8 @@ For explanations, just paste the problem statement and click 'Explain'.""",
                     )"""
                     options_dropdown = gr.Dropdown(
                         label="Select an operation",
-                        choices=[Operation.GENERATE_TESTS.value, Operation.EXPLAIN_PROBLEM.value],
-                        value=DEFAULT_OPERATION.value,
+                        choices=list(FEATURE_DISPLAY_NAMES.values()),
+                        value=FEATURE_DISPLAY_NAMES[DEFAULT_OPERATION],
                         interactive=True,
                     )
                     with gr.Column():
@@ -117,6 +123,25 @@ For explanations, just paste the problem statement and click 'Explain'.""",
                             size="lg",
                             scale=0,
                         )
+                
+                # Difficulty selector (only visible for test case generation)
+                from app.features.testcase.v1.models.models import Difficulty, difficulty_description
+                
+                # Create difficulty choices with descriptions
+                difficulty_choices = []
+                difficulty_info = {}
+                for difficulty in Difficulty:
+                    choice_label = f"{difficulty.value.upper()}"
+                    difficulty_choices.append(choice_label)
+                    difficulty_info[choice_label] = difficulty_description[difficulty].strip()
+                
+                difficulty_radio = gr.Radio(
+                    label="Test Case Difficulty Level",
+                    choices=difficulty_choices,
+                    value=Difficulty.EASY.value.upper(),  # Default to EASY (single value, not list)
+                    visible=(DEFAULT_OPERATION == Feature.TEST_CASE_GENERATION),
+                    info="Select the difficulty level for test case generation"
+                )
                 
                 # Clarifier message area (initially hidden)
                 clarifier_msg = gr.Markdown(
@@ -137,66 +162,22 @@ For explanations, just paste the problem statement and click 'Explain'.""",
                         )
         
         # Event handlers
-        def handle_generate_tests(problem_input: str, statement: str) -> Tuple[Any, str, str]:
+        def handle_generate_tests(problem_input: str, statement: str, difficulty: str) -> Tuple[Any, str, str]:
             """Handle test generation request."""
-            if not statement.strip():
-                return (
-                    None,
-                    "Please enter a problem statement first.",
-                    """
-                    ⚠️ **Missing Input**: Please paste a problem statement with **Constraints** and **Examples**.
-                    
-                    Example format:
-                    ```
-                    Constraints:
-                    • 1 ≤ n ≤ 10^5
-                    • -10^9 ≤ nums[i] ≤ 10^9
-                    
-                    Example 1:
-                    Input: nums = [2,7,11,15], target = 9
-                    Output: [0,1]
-                    ```
-                    """,
-                )
-            
-            # For now, return a placeholder response
-            # This will be replaced with actual parser and generator logic
-            sample_tests = {
-                "generated_cases": [
-                    {
-                        "input": {"nums": [1], "target": 1},
-                        "tags": ["boundary", "min_length"]
-                    },
-                    {
-                        "input": {"nums": [1, 2], "target": 3},
-                        "tags": ["boundary", "small_case"]
-                    },
-                    {
-                        "input": {"nums": [-1000000000, 1000000000], "target": 0},
-                        "tags": ["boundary", "extreme_values"]
-                    }
-                ],
-                "metadata": {
-                    "total_cases": 3,
-                    "generation_time_ms": 42
-                }
-            }
-            
-            summary = f"""
-            ✅ **Generated {len(sample_tests['generated_cases'])} test cases**
-            
-            **Coverage:**
-            - Boundary cases: 3
-            - Edge cases: 2
-            - Random cases: 1
-            
-            **Tags used:** `boundary`, `min_length`, `small_case`, `extreme_values`
-            """
-            
+            request = TestCaseGenerationRequest(
+                user_message=problem_input,
+                difficulty=difficulty
+            )
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            response = loop.run_until_complete(dispatch(Feature.TEST_CASE_GENERATION, request))
             return (
                 problem_input,
-                summary,
-                "",  # Clear clarifier message on success
+                TestCaseFormatter.format_testcase(response),
+                "",
             )
         
         def handle_explain_problem(statement: str) -> str:
@@ -241,14 +222,23 @@ For explanations, just paste the problem statement and click 'Explain'.""",
                 "",  # clarifier_msg
             )
         
-        def handle_send(problem_input: str, operation: str) -> Tuple[str, Any, str]:
+        def handle_send(problem_input: str, operation: str, difficulty: str) -> Tuple[str, Any, str]:
             """Send the problem statement to the server."""
-            match operation:
-                case Operation.GENERATE_TESTS.value:
-                    return handle_generate_tests(problem_input, operation)
+            # Convert display name back to Feature
+            feature_map = {v: k for k, v in FEATURE_DISPLAY_NAMES.items()}
+            selected_feature = feature_map.get(operation)
+            
+            match selected_feature:
+                case Feature.TEST_CASE_GENERATION:
+                    print(f"Sending request to generate test cases: {problem_input, operation, difficulty}")
+                    return handle_generate_tests(problem_input, operation, difficulty)
                 case _:
                     return (problem_input, "There's nothing to show here :(", "")
         
+        
+        def toggle_difficulty_visibility(operation: str) -> gr.Radio:
+            """Toggle visibility of difficulty radio buttons based on selected operation."""
+            return gr.Radio(visible=(operation == FEATURE_DISPLAY_NAMES[Feature.TEST_CASE_GENERATION]))
         
         clear_btn.click(
             fn=handle_clear,
@@ -261,12 +251,19 @@ For explanations, just paste the problem statement and click 'Explain'.""",
 
         send_btn.click(
             fn=handle_send,
-            inputs=[problem_input, options_dropdown],
+            inputs=[problem_input, options_dropdown, difficulty_radio],
             outputs=[
                 problem_input,
                 test_results,
                 clarifier_msg,
             ],
+        )
+        
+        # Toggle difficulty radio visibility when operation changes
+        options_dropdown.change(
+            fn=toggle_difficulty_visibility,
+            inputs=[options_dropdown],
+            outputs=[difficulty_radio],
         )
     
     return interface
