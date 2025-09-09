@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
 from app.domain.shared.leetcode.models import LeetCodeProblem, LeetCodeProblemDetails
+from cattrs import Converter
 
 class GetProblemDetailsPort(ABC):
     @abstractmethod
-    def get_by_question_slug(self, question_slug: LeetCodeProblem) -> LeetCodeProblemDetails: 
+    def get_problem_details(self, converter: Converter, payload: dict) -> LeetCodeProblemDetails: 
         """
         Fetches problem details by its title slug.
 
         Args:
-            question_slug: The title slug of the problem.
+            converter: The converter to use to convert the response to a LeetCodeProblemDetails object.
+            payload: The payload to use to get the problem details.
 
         Returns:
             A LeetCodeProblemDetails object containing the details.
