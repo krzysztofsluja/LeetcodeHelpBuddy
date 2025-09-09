@@ -1,8 +1,9 @@
 from typing import Dict, Final, override
-from app.domain.ports.api.leetcode import GetProblemDetailsPort
-from app.domain.shared.exception.api.api_exception import LeetCodeApiError
-from app.domain.shared.leetcode.models import LeetCodeProblem, LeetCodeProblemDetails
+from app.domain.ports.api.leetcode import GetProblemDetailsPort, QuestionSlugExtractorPort
+from app.domain.shared.exception.api.api_exception import LeetCodeApiError, LeetCodeProblemNotFoundError
+from app.domain.shared.leetcode.models import LeetCodeProblem, LeetCodeProblemDetails, LeetCodeProblemSlug
 import requests
+import re
 from cattrs import Converter
 
 
@@ -20,3 +21,19 @@ class GetProblemDetailsAdapter(GetProblemDetailsPort):
             return converter.structure(request.json(), LeetCodeProblemDetails)
         except Exception as e:
             raise LeetCodeApiError()
+
+class SimpleQuestionSlugExtractorAdapter(QuestionSlugExtractorPort):
+
+    def extract_question_slug(self, user_input: str) -> LeetCodeProblemSlug:
+        if not user_input or user_input.strip() == "":
+            raise LeetCodeProblemNotFoundError()
+        cleaned = user_input.strip().lower()
+        cleaned = re.sub(r'^(leetcode\s*)?(\d+\.?\s*)?', '', cleaned)
+        cleaned = re.sub(r'\s*(problem|question)\s*$', '', cleaned)
+        slug = re.sub(r'[^\w\s-]', '', cleaned)
+        slug = re.sub(r'[\s_]+', '-', slug)
+        slug = re.sub(r'-+', '-', slug).strip('-')
+        try:
+            return LeetCodeProblem.of(slug)
+        except ValueError as e:
+            raise LeetCodeProblemNotFoundError(f"Generated invalid slug '{slug}': {e}")

@@ -3,7 +3,7 @@ import re
 
 
 @dataclass(frozen=True)
-class LeetCodeProblem:
+class LeetCodeProblemSlug:
     question_slug: str
 
     def __post_init__(self) -> None:
@@ -13,8 +13,12 @@ class LeetCodeProblem:
             raise ValueError("Question slug must contain only lowercase letters and underscores")
 
     @classmethod
-    def of(cls, question_slug: str) -> "LeetCodeProblem":
-        return LeetCodeProblem(question_slug=question_slug)
+    def of(cls, question_slug: str) -> "LeetCodeProblemSlug":
+        return LeetCodeProblemSlug(question_slug=question_slug)
+
+@dataclass(frozen=True)
+class LeetCodeProblem:
+    question_slug: LeetCodeProblemSlug
 
 @dataclass(frozen=True)
 class LeetCodeProblemDetails:

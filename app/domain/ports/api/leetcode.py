@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from app.domain.shared.leetcode.models import LeetCodeProblem, LeetCodeProblemDetails
+from app.domain.shared.leetcode.models import LeetCodeProblemSlug, LeetCodeProblemDetails
 from cattrs import Converter
 
 class GetProblemDetailsPort(ABC):
@@ -18,5 +18,19 @@ class GetProblemDetailsPort(ABC):
         Raises:
             LeetCodeProblemNotFoundError: If the problem cannot be found.
             LeetCodeApiError: For other API-related errors.
+        """
+        raise NotImplementedError
+
+class QuestionSlugExtractorPort(ABC):
+    @abstractmethod
+    def extract_question_slug(self, user_input: str) -> LeetCodeProblemSlug:
+        """
+        Extracts the question slug from a given user input.
+
+        Args:
+            user_input: The user input to extract the question slug from.
+
+        Returns:
+            A LeetCodeProblemSlug object containing the question slug.
         """
         raise NotImplementedError
