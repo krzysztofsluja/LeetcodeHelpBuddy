@@ -16,7 +16,8 @@ import gradio as gr
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.ui.gradio_app import create_gradio_interface
+from app.infrastructure.ui.app_ui import create_gradio_interface
+
 
 
 @asynccontextmanager

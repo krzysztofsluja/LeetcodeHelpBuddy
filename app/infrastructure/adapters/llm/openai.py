@@ -1,8 +1,7 @@
-from ast import Dict
-from typing import List, Type, TypeVar, Final
+from typing import Dict, List, Type, TypeVar, Final
 from pydantic import BaseModel
 from app.domain.shared.exception.llm.llm_exception import EmptyResponseException, LLMException, StructuredOutputNotGeneratedException
-from domain.ports.llm.models import LLMRequest, LLMResponse
+from app.domain.ports.llm.models import LLMRequest, LLMResponse
 from openai import APIError, AsyncOpenAI
 
 
@@ -40,11 +39,10 @@ class OpenAIAdapter:
                 temperature=self.temperature,
                 text_format=response_format
             )
-            parsed_response = response.choices[0].message
-            if parsed_response.refusal:
+            if response.error or not response.output:
                 raise StructuredOutputNotGeneratedException();
             return LLMResponse(
-                content=parsed_response.parsed,
+                content=response.output_parsed,
                 model_name=self.model_name,
                 provider=self.PROVIDER
             )
