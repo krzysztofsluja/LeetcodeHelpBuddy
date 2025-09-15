@@ -7,9 +7,8 @@ import gradio as gr
 
 from app.domain.testcase.models.models import Difficulty, difficulty_description
 from app.infrastructure.factories.service_factory import ServiceFactory
-from app.domain.shared.exception.testcase.testcase_exception import TestCaseNotGeneratedException
-from app.domain.shared.exception.llm.llm_exception import LLMException
-from app.domain.shared.exception.api.api_exception import LeetCodeApiError
+from app.domain.shared.exception.base import BaseApplicationException
+
 
 def create_gradio_interface() -> gr.Blocks:
     
@@ -46,12 +45,8 @@ def create_gradio_interface() -> gr.Blocks:
             
             return result
             
-        except LeetCodeApiError as e:
-            return f"❌ **API Error**: Failed to fetch problem details. {str(e)}"
-        except TestCaseNotGeneratedException as e:
-            return f"❌ **Generation Error**: Could not generate test cases. {str(e)}"
-        except LLMException as e:
-            return f"❌ **LLM Error**: AI service encountered an issue. {str(e)}"
+        except BaseApplicationException as e:
+            return f"❌ **Error**: {str(e)}"
         except Exception as e:
             error_details = traceback.format_exc()
             return f"❌ **Unexpected Error**: {str(e)}\n\n```\n{error_details}\n```"
