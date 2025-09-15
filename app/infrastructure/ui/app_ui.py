@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import traceback
 from typing import Optional
 
@@ -8,6 +9,8 @@ import gradio as gr
 from app.domain.testcase.models.models import Difficulty, difficulty_description
 from app.infrastructure.factories.service_factory import ServiceFactory
 from app.domain.shared.exception.base import BaseApplicationException
+
+logger = logging.getLogger(__name__)
 
 
 def create_gradio_interface() -> gr.Blocks:
@@ -46,8 +49,17 @@ def create_gradio_interface() -> gr.Blocks:
             return result
             
         except BaseApplicationException as e:
+            logger.error(
+                "An application error occurred: %s",
+                e,
+                exc_info=True,
+                extra={"context": e.context},
+            )
             return f"❌ **Error**: {str(e)}"
         except Exception as e:
+            logger.critical(
+                "An unexpected error occurred: %s", e, exc_info=True
+            )
             error_details = traceback.format_exc()
             return f"❌ **Unexpected Error**: {str(e)}\n\n```\n{error_details}\n```"
     

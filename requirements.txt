@@ -26,3 +26,5 @@ pytest-asyncio>=0.21.0
 allpairspy>=2.5.0
 
 cattrs>=24.0.0
+
+python-json-logger

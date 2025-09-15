@@ -16,14 +16,15 @@ import gradio as gr
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.infrastructure.config.logging_config import configure_logging
 from app.infrastructure.ui.app_ui import create_gradio_interface
-
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
     # Startup
+    configure_logging()
     print("Starting LeetCode Help Buddy...")
     load_dotenv()
     
