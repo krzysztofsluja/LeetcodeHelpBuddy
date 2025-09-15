@@ -20,6 +20,10 @@ class LeetCodeProblemSlug:
 class LeetCodeProblem:
     question_slug: LeetCodeProblemSlug
 
+    @classmethod
+    def of(cls, question_slug: LeetCodeProblemSlug) -> "LeetCodeProblem":
+        return LeetCodeProblem(question_slug=question_slug)
+
 @dataclass(frozen=True)
 class LeetCodeProblemDetails:
     question_slug: str
