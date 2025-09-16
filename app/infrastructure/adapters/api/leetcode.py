@@ -13,6 +13,7 @@ import requests
 import re
 from cattrs import Converter
 from dotenv import load_dotenv
+import functools
 
 class AlfaLCGetProblemDetailsAdapter(GetProblemDetailsPort):
 
@@ -25,6 +26,7 @@ class AlfaLCGetProblemDetailsAdapter(GetProblemDetailsPort):
         self.get_problem_details_endpoint = api_url + "/select"
 
     @override
+    @functools.lru_cache(maxsize=40)
     def get_problem_details(self, problem: LeetCodeProblem) -> LeetCodeProblemDetails:
         converter = self.__prepare_converter()
         try:
