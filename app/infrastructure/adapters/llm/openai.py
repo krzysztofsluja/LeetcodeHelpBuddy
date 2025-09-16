@@ -40,19 +40,19 @@ class OpenAIAdapter:
     ) -> LLMResponse[T]:
         messages = self.__prepare_messages(request)
         try:
-            response = await self.client.chat.completions.create(
+            response = await self.client.responses.parse(
                 model=self.model_name,
-                messages=messages,
+                input=messages,
                 temperature=self.temperature,
-                response_model=response_format,
+                text_format=response_format,
             )
-            if not response:
+            if response.error or not response.output:
                 raise StructuredOutputNotGeneratedException(
                     provider=self.PROVIDER,
                     response_format_name=response_format.__name__,
                 )
             return LLMResponse(
-                content=response,
+                content=response.output_parsed,
                 model_name=self.model_name,
                 provider=self.PROVIDER,
             )
