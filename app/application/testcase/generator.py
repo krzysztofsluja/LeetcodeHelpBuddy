@@ -16,8 +16,7 @@ class TestCaseGenerator:
         try:
             llm_request = LLMRequest(
               user_prompt=self.__prepare_user_prompt(request),
-                system_prompt=self.__prepare_system_prompt(request.difficulty),
-                temperature=self.temperature
+              system_prompt=self.__prepare_system_prompt(request.difficulty)
             )
 
             response = await self.llm_port.generate_structured_output(llm_request, ProblemTestCases)

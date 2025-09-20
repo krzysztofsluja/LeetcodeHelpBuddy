@@ -7,6 +7,7 @@ from typing import Optional
 import gradio as gr
 
 from app.domain.testcase.models.models import Difficulty, difficulty_description
+from app.domain.explain.models.models import ExplainationMode
 from app.infrastructure.factories.service_factory import ServiceFactory
 from app.domain.shared.exception.base import BaseApplicationException
 
@@ -17,6 +18,7 @@ def create_gradio_interface() -> gr.Blocks:
     
     # Initialize the service
     test_case_service = ServiceFactory.create_test_case_service()
+    explanation_service = ServiceFactory.create_explanation_service()
     
     async def handle_generate_test_cases(
         problem_text: str, 
@@ -59,6 +61,38 @@ def create_gradio_interface() -> gr.Blocks:
         except Exception as e:
             logger.critical(
                 "An unexpected error occurred: %s", e, exc_info=True
+            )
+            error_details = traceback.format_exc()
+            return f"❌ **Unexpected Error**: {str(e)}\n\n```\n{error_details}\n```"
+    
+    async def handle_explain_problem(
+        problem_text: str,
+        explanation_mode_str: str
+    ) -> str:
+        """Handle problem explanation with streaming and comprehensive error handling."""
+        try:
+            if not problem_text or problem_text.strip() == "":
+                return "❌ **Error**: Please enter a problem statement."
+            
+            try:
+                explanation_mode = ExplainationMode(explanation_mode_str.lower())
+            except ValueError:
+                return f"❌ **Error**: Invalid explanation mode: {explanation_mode_str}"
+
+            response = await explanation_service.explain(problem_text)
+            return response.explaination
+            
+        except BaseApplicationException as e:
+            logger.error(
+                "An application error occurred during explanation: %s",
+                e,
+                exc_info=True,
+                extra={"context": e.context},
+            )
+            return f"❌ **Error**: {str(e)}"
+        except Exception as e:
+            logger.critical(
+                "An unexpected error occurred during explanation: %s", e, exc_info=True
             )
             error_details = traceback.format_exc()
             return f"❌ **Unexpected Error**: {str(e)}\n\n```\n{error_details}\n```"
@@ -128,7 +162,7 @@ def create_gradio_interface() -> gr.Blocks:
                     )"""
                     options_dropdown = gr.Dropdown(
                         label="Select an operation",
-                        choices=["GENERATE TEST CASES"],
+                        choices=["GENERATE TEST CASES", "EXPLAIN PROBLEM"],
                         value="GENERATE TEST CASES",
                         interactive=True,
                     )
@@ -155,7 +189,18 @@ def create_gradio_interface() -> gr.Blocks:
                     label="Test Case Difficulty Level",
                     choices=difficulty_choices,
                     value=Difficulty.EASY.value.upper(),
-                    info="Select the difficulty level for test case generation"
+                    info="Select the difficulty level for test case generation",
+                    visible=True
+                )
+                
+                # Explanation mode selector
+                explanation_mode_choices = [mode.value.upper() for mode in ExplainationMode]
+                explanation_mode_radio = gr.Radio(
+                    label="Explanation Mode",
+                    choices=explanation_mode_choices,
+                    value=ExplainationMode.BEGINNER.value.upper(),
+                    info="Select the explanation complexity level",
+                    visible=False
                 )
             
                 with gr.Column(elem_classes=["results-container"]):
@@ -169,10 +214,35 @@ def create_gradio_interface() -> gr.Blocks:
                             interactive=False
                         )
         
+        # Function to handle operation selection
+        def on_operation_change(operation: str):
+            if operation == "GENERATE TEST CASES":
+                return gr.update(visible=True), gr.update(visible=False)
+            elif operation == "EXPLAIN PROBLEM":
+                return gr.update(visible=False), gr.update(visible=True)
+            return gr.update(visible=True), gr.update(visible=False)
+        
         # Wire up event handlers
+        options_dropdown.change(
+            fn=on_operation_change,
+            inputs=[options_dropdown],
+            outputs=[difficulty_radio, explanation_mode_radio]
+        )
+        
+        # Separate click handlers for different operations
+        def create_send_handler():
+            async def handler(problem_text: str, operation: str, difficulty: str, explanation_mode: str):
+                """Dispatch to the appropriate async handler and await its result."""
+                if operation == "GENERATE TEST CASES":
+                    return await handle_generate_test_cases(problem_text, difficulty)
+                elif operation == "EXPLAIN PROBLEM":
+                    return await handle_explain_problem(problem_text, explanation_mode)
+                return "❌ **Error**: Unknown operation"
+            return handler
+
         send_btn.click(
-            fn=handle_generate_test_cases,
-            inputs=[problem_input, difficulty_radio],
+            fn=create_send_handler(),
+            inputs=[problem_input, options_dropdown, difficulty_radio, explanation_mode_radio],
             outputs=[test_results],
             show_progress=True
         )
