@@ -9,7 +9,6 @@ T = TypeVar('T', bound=BaseModel)
 class LLMRequest:
     user_prompt: str
     system_prompt: Optional[str]
-    temperature: float = 0.1
 
 @dataclass
 class LLMResponse(Generic[T]):
