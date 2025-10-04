@@ -8,6 +8,7 @@ import gradio as gr
 
 from app.domain.testcase.models.models import Difficulty, difficulty_description
 from app.domain.explain.models.models import ExplainationMode
+from app.domain.solution.models.models import SolutionAnalysisRequest
 from app.infrastructure.factories.service_factory import ServiceFactory
 from app.domain.shared.exception.base import BaseApplicationException
 
@@ -19,6 +20,7 @@ def create_gradio_interface() -> gr.Blocks:
     # Initialize the service
     test_case_service = ServiceFactory.create_test_case_service()
     explanation_service = ServiceFactory.create_explanation_service()
+    solution_service = ServiceFactory.create_solution_service()
     
     async def handle_generate_test_cases(
         problem_text: str, 
@@ -96,10 +98,37 @@ def create_gradio_interface() -> gr.Blocks:
             )
             error_details = traceback.format_exc()
             return f"❌ **Unexpected Error**: {str(e)}\n\n```\n{error_details}\n```"
-    
-    def handle_clear() -> tuple[str, str]:
+
+    async def handle_check_solution(problem_title: str, solution_code: str) -> str:
+        """Handle solution analysis with comprehensive error handling."""
+        try:
+            if not problem_title or not problem_title.strip():
+                return "❌ **Error**: Please enter a problem title."
+            if not solution_code or not solution_code.strip():
+                return "❌ **Error**: Please enter your solution code."
+
+            request = SolutionAnalysisRequest(title=problem_title, code=solution_code)
+            response = await solution_service.process(request)
+            return response.feedback
+
+        except BaseApplicationException as e:
+            logger.error(
+                "An application error occurred during solution analysis: %s",
+                e,
+                exc_info=True,
+                extra={"context": e.context},
+            )
+            return f"❌ **Error**: {str(e)}"
+        except Exception as e:
+            logger.critical(
+                "An unexpected error occurred during solution analysis: %s", e, exc_info=True
+            )
+            error_details = traceback.format_exc()
+            return f"❌ **Unexpected Error**: {str(e)}\n\n```\n{error_details}\n```"
+
+    def handle_clear() -> tuple[str, str, str]:
         """Clear all inputs and outputs."""
-        return "", ""
+        return "", "", ""
 
     custom_css = """
     .main-container {
@@ -162,7 +191,7 @@ def create_gradio_interface() -> gr.Blocks:
                     )"""
                     options_dropdown = gr.Dropdown(
                         label="Select an operation",
-                        choices=["GENERATE TEST CASES", "EXPLAIN PROBLEM"],
+                        choices=["GENERATE TEST CASES", "EXPLAIN PROBLEM", "CHECK MY SOLUTION"],
                         value="GENERATE TEST CASES",
                         interactive=True,
                     )
@@ -202,6 +231,13 @@ def create_gradio_interface() -> gr.Blocks:
                     info="Select the explanation complexity level",
                     visible=False
                 )
+
+                solution_code_input = gr.Textbox(
+                    label="Your Solution",
+                    lines=15,
+                    placeholder="Paste your code solution here.",
+                    visible=False
+                )
             
                 with gr.Column(elem_classes=["results-container"]):
                     gr.Markdown("### Results")
@@ -217,32 +253,36 @@ def create_gradio_interface() -> gr.Blocks:
         # Function to handle operation selection
         def on_operation_change(operation: str):
             if operation == "GENERATE TEST CASES":
-                return gr.update(visible=True), gr.update(visible=False)
+                return gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)
             elif operation == "EXPLAIN PROBLEM":
-                return gr.update(visible=False), gr.update(visible=True)
-            return gr.update(visible=True), gr.update(visible=False)
+                return gr.update(visible=False), gr.update(visible=True), gr.update(visible=False)
+            elif operation == "CHECK MY SOLUTION":
+                return gr.update(visible=False), gr.update(visible=False), gr.update(visible=True)
+            return gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)
         
         # Wire up event handlers
         options_dropdown.change(
             fn=on_operation_change,
             inputs=[options_dropdown],
-            outputs=[difficulty_radio, explanation_mode_radio]
+            outputs=[difficulty_radio, explanation_mode_radio, solution_code_input]
         )
         
         # Separate click handlers for different operations
         def create_send_handler():
-            async def handler(problem_text: str, operation: str, difficulty: str, explanation_mode: str):
+            async def handler(problem_text: str, operation: str, difficulty: str, explanation_mode: str, solution_code: str):
                 """Dispatch to the appropriate async handler and await its result."""
                 if operation == "GENERATE TEST CASES":
                     return await handle_generate_test_cases(problem_text, difficulty)
                 elif operation == "EXPLAIN PROBLEM":
                     return await handle_explain_problem(problem_text, explanation_mode)
+                elif operation == "CHECK MY SOLUTION":
+                    return await handle_check_solution(problem_text, solution_code)
                 return "❌ **Error**: Unknown operation"
             return handler
 
         send_btn.click(
             fn=create_send_handler(),
-            inputs=[problem_input, options_dropdown, difficulty_radio, explanation_mode_radio],
+            inputs=[problem_input, options_dropdown, difficulty_radio, explanation_mode_radio, solution_code_input],
             outputs=[test_results],
             show_progress=True
         )
@@ -250,7 +290,7 @@ def create_gradio_interface() -> gr.Blocks:
         clear_btn.click(
             fn=handle_clear,
             inputs=[],
-            outputs=[problem_input, test_results],
+            outputs=[problem_input, test_results, solution_code_input],
             show_progress=False
         )
     
