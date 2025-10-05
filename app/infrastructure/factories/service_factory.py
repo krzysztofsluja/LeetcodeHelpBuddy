@@ -8,7 +8,7 @@ from app.application.explain.service import ExplanationService
 from app.infrastructure.adapters.api.leetcode import AlfaLCGetProblemDetailsAdapter, SimpleQuestionSlugExtractorAdapter
 from app.infrastructure.adapters.llm.openai import OpenAIAdapter, OpenAITemperatureConfigurableAdapter
 from app.application.explain.generator import ProblemStatementExplainer
-from app.application.solution.service import SolutionService
+from app.application.solution.service import SolutionAnalysisService
 from app.application.solution.generator import SolutionGenerator
 
 
@@ -42,14 +42,14 @@ class ServiceFactory:
         )
 
     @staticmethod
-    def create_solution_service() -> SolutionService:
-        return SolutionService(
+    def create_solution_service() -> SolutionAnalysisService:
+        return SolutionAnalysisService(
             slug_extractor=SimpleQuestionSlugExtractorAdapter(),
             problem_details_port=AlfaLCGetProblemDetailsAdapter(),
             solution_generator=SolutionGenerator(
                 llm_port=OpenAIAdapter(
                     client=AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")),
-                    model_name="o3-mini"
+                    model_name="gpt-4.1-2025-04-14"
                 )
             )
         )

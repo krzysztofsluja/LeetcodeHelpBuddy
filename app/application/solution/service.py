@@ -7,7 +7,7 @@ from app.domain.ports.api.leetcode import GetProblemDetailsPort, QuestionSlugExt
 from app.domain.shared.leetcode.models import LeetCodeProblem
 
 
-class SolutionService:
+class SolutionAnalysisService:
 
     def __init__(
             self,
@@ -24,5 +24,5 @@ class SolutionService:
         problem = LeetCodeProblem.of(question_slug)
         problem_details = self.problem_details_port.get_problem_details(problem)
 
-        feedback = await self.solution_generator.generate_feedback(request, problem_details)
-        return SolutionAnalysisResponse(feedback=feedback)
+        result = await self.solution_generator.generate_feedback(request, problem_details)
+        return SolutionAnalysisResponse(result=result)
