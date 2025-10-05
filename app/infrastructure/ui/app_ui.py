@@ -109,7 +109,7 @@ def create_gradio_interface() -> gr.Blocks:
 
             request = SolutionAnalysisRequest(title=problem_title, code=solution_code)
             response = await solution_service.process(request)
-            return response.feedback
+            return _format_solution_check_result(response.result)
 
         except BaseApplicationException as e:
             logger.error(
@@ -125,6 +125,35 @@ def create_gradio_interface() -> gr.Blocks:
             )
             error_details = traceback.format_exc()
             return f"❌ **Unexpected Error**: {str(e)}\n\n```\n{error_details}\n```"
+    
+    def _format_solution_check_result(result) -> str:
+        """Format structured solution check result into readable markdown."""
+        verdict_emoji = "✅" if result.verdict == "HAPPY_PATH" else "⚠️"
+        confidence_badge = f"[{result.confidence}]"
+        
+        output = f"## {verdict_emoji} Verdict: {result.verdict} {confidence_badge}\n\n"
+        
+        if result.signals_observed:
+            output += "### 🔍 Signals Observed\n"
+            for signal in result.signals_observed:
+                output += f"- {signal}\n"
+            output += "\n"
+        
+        if result.attention_areas:
+            output += "### 👀 Attention Areas\n"
+            for area in result.attention_areas:
+                output += f"- {area}\n"
+            output += "\n"
+        
+        if result.potential_problems:
+            output += "### ⚡ Potential Problems\n"
+            for problem in result.potential_problems:
+                output += f"- {problem}\n"
+            output += "\n"
+        
+        output += f"### 💪 {result.encouragement}\n"
+        
+        return output
 
     def handle_clear() -> tuple[str, str, str]:
         """Clear all inputs and outputs."""
