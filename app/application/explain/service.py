@@ -1,11 +1,13 @@
 from app.domain.ports.api.leetcode import GetProblemDetailsPort, QuestionSlugExtractorPort
 from app.domain.shared.leetcode.models import LeetCodeProblem
+from app.domain.shared.exception.base import BaseApplicationException
 from app.application.explain.generator import ProblemStatementExplainer
 from app.domain.explain.models.models import ExplainProblemStatementRequest, ExplainationMode
 
 
-class ExplanationError(Exception):
-    pass
+class ExplanationError(BaseApplicationException):
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
 class ExplanationService:

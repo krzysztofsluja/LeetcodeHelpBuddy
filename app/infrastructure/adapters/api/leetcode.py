@@ -55,9 +55,15 @@ class AlfaLCGetProblemDetailsAdapter(GetProblemDetailsPort):
                     response_text=response.text,
                 )
             
-            return converter.structure(response.json(), LeetCodeProblemDetails)
+            response_data = response.json()
+            if not response_data or not isinstance(response_data, dict) or not response_data.get("titleSlug"):
+                raise LeetCodeProblemNotFoundError(
+                    question_slug=problem.question_slug.question_slug
+                )
+            
+            return converter.structure(response_data, LeetCodeProblemDetails)
         
-        except LeetCodeApiRequestError:
+        except (LeetCodeApiRequestError, LeetCodeProblemNotFoundError):
             raise
         except Exception as e:
             raise LeetCodeApiUnexpectedError(
