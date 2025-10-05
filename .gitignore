@@ -1,5 +1,25 @@
+# Cursor
 .cursor/*
 .cursorignore
+
+# Python
 /leetcode_env
 **/__pycache__/**
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
 .env
+.env.local
+
+# Documentation
+/documentation
+
+# Docker
+.dockerignore
