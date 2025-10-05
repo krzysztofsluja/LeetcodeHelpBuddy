@@ -1,0 +1,49 @@
+# LeetCode Help Buddy - Docker Compose Configuration
+# Orchestrates the FastAPI application with the alfa-leetcode-api service
+
+services:
+  leetcode-api:
+    image: alfaarghya/alfa-leetcode-api:2.0.1
+    container_name: leetcode-api
+    ports:
+      - "3000:3000"
+    networks:
+      - leetcode-buddy-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # LeetCode Help Buddy application (Python FastAPI + Gradio)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leetcode-help-buddy
+    ports:
+      - "8000:8000"
+    networks:
+      - leetcode-buddy-network
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LEETCODE_API_BASE_URL=http://leetcode-api:3000
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      leetcode-api:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./app:/app/app:ro
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  leetcode-buddy-network:
+    driver: bridge
